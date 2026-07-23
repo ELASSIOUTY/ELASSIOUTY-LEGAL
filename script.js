@@ -71,7 +71,7 @@
 
   /* ---- Reveal on scroll ---- */
   var revealEls = Array.prototype.slice.call(
-    doc.querySelectorAll(".section-title, .section-lead, .counsel-card, .card, .principle, .stat, .enforcement-note, .faq, .engagement")
+    doc.querySelectorAll(".section-title, .section-lead, .counsel-card, .card, .principle, .enforcement-note, .faq, .engagement")
   );
   revealEls.forEach(function (el) { el.classList.add("reveal"); });
   if ("IntersectionObserver" in window) {
@@ -91,71 +91,64 @@
     revealEls.forEach(function (el) { el.classList.add("in"); });
   }
 
-  /* ---- Intake form (Formsubmit AJAX) ---- */
-  var form = doc.getElementById("intakeForm");
-  if (form) {
-    var isAr = (doc.documentElement.getAttribute("lang") || "").indexOf("ar") === 0;
-    var T = isAr
-      ? {
-          sending: "جارٍ الإرسال…",
-          ok: "تم الاستلام. نردّ في يوم العمل نفسه.",
-          err: "تعذّر الإرسال. يُرجى المحاولة بعد قليل."
-        }
-      : {
-          sending: "Sending…",
-          ok: "Received. We reply the same business day.",
-          err: "Something went wrong sending that. Please try again in a moment."
-        };
-    var status = doc.getElementById("formStatus");
-    var submitBtn = doc.getElementById("intakeSubmit");
-    // Destination address is base64-encoded so it is not sitting in plain text.
-    var endpoint = "https://formsubmit.co/ajax/" + atob("bm91ci5lbGFzdXR5QG91dGxvb2suY29t");
+  /* ---- Forms (Formsubmit AJAX) — contact + careers ---- */
+  var isAr = (doc.documentElement.getAttribute("lang") || "").indexOf("ar") === 0;
+  var T = isAr
+    ? {
+        sending: "جارٍ الإرسال…",
+        ok: "تم الاستلام. نردّ في يوم العمل نفسه.",
+        err: "تعذّر الإرسال. يُرجى المحاولة بعد قليل."
+      }
+    : {
+        sending: "Sending…",
+        ok: "Received. We reply the same business day.",
+        err: "Something went wrong sending that. Please try again in a moment."
+      };
+  // Destination address is base64-encoded so it is not sitting in plain text.
+  var endpoint = "https://formsubmit.co/ajax/" + atob("TS5lbGFzdW90eUB5YWhvby5jb20=");
+
+  Array.prototype.forEach.call(doc.querySelectorAll("form.ajax-form"), function (form) {
+    var status = form.querySelector(".form-status");
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var subject = form.getAttribute("data-subject") || "New enquiry — ELASSIOUTY LEGAL";
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      // Honeypot: if filled, silently drop (bot)
       var honey = form.querySelector('input[name="_honey"]');
-      if (honey && honey.value) return;
+      if (honey && honey.value) return; // bot
 
       if (!form.checkValidity()) {
         form.reportValidity();
         return;
       }
 
-      status.className = "form-status";
-      status.textContent = "";
+      if (status) { status.className = "form-status"; status.textContent = ""; }
       var original = submitBtn.textContent;
       submitBtn.disabled = true;
       submitBtn.textContent = T.sending;
 
       var data = new FormData(form);
-      data.append("_subject", "New matter — ELASSIOUTY LEGAL");
+      data.append("_subject", subject);
       data.append("_template", "table");
       data.append("_captcha", "false");
 
-      fetch(endpoint, {
-        method: "POST",
-        body: data,
-        headers: { Accept: "application/json" }
-      })
+      fetch(endpoint, { method: "POST", body: data, headers: { Accept: "application/json" } })
         .then(function (r) { return r.json(); })
         .then(function (res) {
           if (res && (res.success === true || res.success === "true")) {
             form.reset();
-            status.classList.add("ok");
-            status.textContent = T.ok;
+            if (status) { status.classList.add("ok"); status.textContent = T.ok; }
           } else {
             throw new Error((res && res.message) || "error");
           }
         })
         .catch(function () {
-          status.classList.add("err");
-          status.textContent = T.err;
+          if (status) { status.classList.add("err"); status.textContent = T.err; }
         })
         .finally(function () {
           submitBtn.disabled = false;
           submitBtn.textContent = original;
         });
     });
-  }
+  });
 })();
